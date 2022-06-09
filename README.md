@@ -1,4 +1,8 @@
 # 数据集自动标注工具
+## 环境配置
+编译安装imagededup
+
+git clone https://github.com/idealo/imagededup.git
 ## 使用说明
 在该目录下打开终端,执行如下命令
 
