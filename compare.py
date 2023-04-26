@@ -36,29 +36,29 @@ def main():
 
 	#Generate img list to travel
 	for root, dirs, files in os.walk(src_dir, topdown=False):
-    		for file_name in files:
+		for file_name in files:
 			# Continue while the file is illegal.
 			for extend in default_img_format:
 				if file_name.endswith(extend):
 					img_list.append(file_name)
 					break
-	for img_file in img_list:
-		img = cv2.imread(os.path.join(src_dir, img_file))
-		gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-		mask = gray > gray.mean()
-		lap = cv2.Laplacian(gray,cv2.CV_64F)
-		score = lap[mask].var()
-		print("mean:{}".format(gray.mean()))
-		print(score)
-		print("="*50)
-		cv2.imshow("img",img)
-		cv2.waitKey(2000)
+	# for img_file in img_list:
+	# 	img = cv2.imread(os.path.join(src_dir, img_file))
+	# 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+	# 	mask = gray > gray.mean()
+	# 	lap = cv2.Laplacian(gray,cv2.CV_64F)
+	# 	score = lap[mask].var()
+	# 	print("mean:{}".format(gray.mean()))
+	# 	print(score)
+	# 	print("="*50)
+	# 	cv2.imshow("img",img)
+	# 	cv2.waitKey(2000)
 	#Generateing CNN encoding
 	print('='*20)
 	print("Image list generated,generating CNN encodings...")
 	print('='*20)
 	encodings = phasher.encode_images(src_dir)
-	duplicates_to_show = phasher.find_duplicates(encoding_map=encodings, min_similarity_threshold=thres)
+	# duplicates_to_show = phasher.find_duplicates(encoding_map=encodings, min_similarity_threshold=thres)
 	duplicates = phasher.find_duplicates_to_remove(encoding_map=encodings, min_similarity_threshold=thres)
 	duplicates.sort()
 	# print(duplicates)

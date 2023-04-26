@@ -1,10 +1,12 @@
 
+# -*- coding: utf-8 -*-
+
 from copy import copy
 import string
 from attr import attr
 import cv2
 import argparse
-from model_32cls import Model
+from model_64cls import Model
 from distribution_analyzer import DistributionAnalyzer
 
 import os
@@ -22,6 +24,8 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities  
 from webdriver_manager.chrome import ChromeDriverManager
+
+from bilibili import BiliBili
 
 analyzer = DistributionAnalyzer()
 
@@ -56,10 +60,11 @@ def autoLabelByStream(model, cap):
     while(True):
         ret, img = cap.read()
         if img is None:
+            print("[WARN] Empty frame...")
+            time.sleep(1)
             continue
         cv2.imshow("Raw", img)
         cv2.waitKey(1)
-        dst = copy(img)
         # 进行推理,获取推理结果
         result = model.infer(img)
         # 若无结果继续进行下一帧识别
@@ -69,14 +74,9 @@ def autoLabelByStream(model, cap):
         labels = []
         # 遍历所有检测结果
         need_save = False
+        vis_result(img, result)
         for det in result:
-            for i in range(4):
-                cv2.line(dst, tuple(det.pts[i % 4]), tuple(
-                    det.pts[(i + 1) % 4]), (255, 0, 0))
-            target = Target()
-
-            target.cls = 9 * det.color + det.id
-            target.pts = np.array(det.pts)
+            target = get36ClsFrom64Cls(det)
             
             if (not analyzer.isInDistribution(target.pts)) and (not need_save):
                 need_save = True
@@ -87,7 +87,6 @@ def autoLabelByStream(model, cap):
                 label += " " + str(coord_x)
                 label += " " + str(coord_y)
             labels.append(label)
-        cv2.imshow("Image", dst)
         cv2.waitKey(1)
         if (need_save):
             # 生成文件名并保存
@@ -98,6 +97,42 @@ def autoLabelByStream(model, cap):
                     file.write(label + "\n")
             print("Saved data as {}".format(file_name))
             cnt += 1
+
+
+def autoLabelByImgs(model, img_list):
+    # -----------------------初始化-----------------------------
+    cnt = 0
+    path = "Data/"
+    print("正在进行自动标注 ... ")
+    # -----------------------初始化-----------------------------
+    for img in tqdm(img_list):
+        # 进行推理,获取推理结果
+        result = model.infer(img)
+        # dst =img.copy()
+        # 若无结果继续进行下一帧识别
+        if (len(result) == 0):
+            continue
+        labels = []
+        # 遍历所有检测结果
+        vis_result(img, result)
+        for det in result:
+            target = get36ClsFrom64Cls(det)
+            
+            label = str(int(target.cls))
+            for pt in det.pts[:, :]:
+                coord_x = pt[0] / img.shape[1]
+                coord_y = pt[1] / img.shape[0]
+                label += " " + str(coord_x)
+                label += " " + str(coord_y)
+            labels.append(label)
+        file_name = str(cnt).zfill(6)
+        cv2.imwrite(os.path.join(path, file_name) + ".jpg", img)
+        with open(os.path.join(path, file_name) + ".txt", "w+") as file:
+            for label in labels:
+                file.write(label + "\n")
+        cnt += 1
+    print("成功标注 {} 张图片 ...".format(cnt))
+    print("="*50)
 
 def autoLabelByDaheng(model, exp, max_delta_exp):
     """使用大恒相机自动标注
@@ -147,14 +182,9 @@ def autoLabelByDaheng(model, exp, max_delta_exp):
         labels = []
         # 遍历所有检测结果
         need_save = False
+        vis_result(img, result)
         for det in result:
-            for i in range(4):
-                cv2.line(dst, tuple(det.pts[i % 4]), tuple(
-                    det.pts[(i + 1) % 4]), (255, 0, 0))
-            target = Target()
-
-            target.cls = 9 * det.color + det.id
-            target.pts = np.array(det.pts)
+            target = get36ClsFrom64Cls(det)
             
             if (not analyzer.isInDistribution(target.pts)) and (not need_save):
                 need_save = True
@@ -165,8 +195,6 @@ def autoLabelByDaheng(model, exp, max_delta_exp):
                 label += " " + str(coord_x)
                 label += " " + str(coord_y)
             labels.append(label)
-        cv2.imshow("Image", dst)
-        cv2.waitKey(20)
         if (need_save):
             # 生成文件名并保存
             file_name = str(cnt).zfill(6)
@@ -177,80 +205,61 @@ def autoLabelByDaheng(model, exp, max_delta_exp):
             print("Saved data as {}".format(file_name))
             cnt += 1
 
+def get_real_url(rid):
+    try:
+        bilibili = BiliBili(rid)
+        return True, bilibili.get_real_url()
+    except Exception as e:
+        print('Exception：', e)
+        return False, ""
+
 def getLiveURL(url, timeout=30, driver_path="chrome/chromedriver"):
-    d_cap = DesiredCapabilities.CHROME  
-    d_cap['goog:loggingPrefs'] = { 'performance':'ALL' }
-    print("Starting Chrome...")
-    options = Options()
-    options.add_experimental_option('w3c', False)
-    driver = webdriver.Chrome(ChromeDriverManager().install(), desired_capabilities=d_cap)
-    print("Opening URL : {}".format(url))
-    driver.get(url)
-    t_url_msg = None
-    trys = 0
-    while True:
-        print('Waiting...')
-        for i in driver.get_log('performance'):
-            # print(i['message'])
-            if '.flv' in i['message']:
-                # print(i['message'])
-                t_url_msg = i['message']
-                break
-        if t_url_msg:
-            break
-        trys += 1
-        if trys == int(timeout/2):
-            print('Error: Timeout!')
-            break
-        time.sleep(2)
-    driver.close()
-    print(t_url_msg)
-    t_url = re.findall('https://(.*?)"', t_url_msg)
-    # print(t_url)
-    for i in t_url:
-        if '.flv' or '.mp4' in i:
-            t_url = i
-    return 'https://' + t_url
+    rid = url.split("/")[-1]
+    ret, real_url = get_real_url(rid)
+    if ret:
+        print(real_url)
+        print("Live URL 已获取: {}".format(real_url['线路1']))
+        return real_url['线路1']
+    else:
+        print("Invalid URL, Retrying!")
+        return getLiveURL(url,timeout,driver_path)
 
-def autoLabelByImgs(model, img_list):
-    # -----------------------初始化-----------------------------
-    cnt = 0
-    path = "Data/"
-    print("正在进行自动标注 ... ")
-    # -----------------------初始化-----------------------------
-    for img in tqdm(img_list):
-        # 进行推理,获取推理结果
-        result = model.infer(img)
-        # dst =img.copy()
-        # 若无结果继续进行下一帧识别
-        if (len(result) == 0):
-            continue
-        labels = []
-        # 遍历所有检测结果
-        for det in result:
-            # for i in range(4):
-            #     cv2.line(dst, tuple(det.pts[i % 4]), tuple(
-            #     det.pts[(i + 1) % 4]), (0, 255, 0))
-            target = Target()
-            target.cls = 9 * det.color + det.id
-            label = str(int(target.cls))
-            for pt in det.pts[:, :]:
-                coord_x = pt[0] / img.shape[1]
-                coord_y = pt[1] / img.shape[0]
-                label += " " + str(coord_x)
-                label += " " + str(coord_y)
-            labels.append(label)
-        file_name = str(cnt).zfill(6)
-        cv2.imwrite(os.path.join(path, file_name) + ".jpg", img)
-        # cv2.imshow("Image", dst)
-        # cv2.waitKey(0)
-        with open(os.path.join(path, file_name) + ".txt", "w+") as file:
-            for label in labels:
-                file.write(label + "\n")
-        cnt += 1
-    print("成功标注 {} 张图片 ...".format(cnt))
-    print("="*50)
+def vis_result(img, result, vis_ms=1):
+    dst = copy(img)
+    for det in result:
+        for i in range(4):
+            cv2.line(dst, tuple(det.pts[i % 4]), tuple(
+                det.pts[(i + 1) % 4]), (0, 255, 0))
+    
+        color_str = "BRNP"
+        id_str = "G12345OB"
+        sz_str = "sb"
+        text = "{}{}{}".format(color_str[det.color // 2],
+                                id_str[det.id],
+                                sz_str[det.color % 2])
+        cv2.putText(dst,
+                    text,
+                    (det.pts[:, :][0][0] - 10 , det.pts[:, :][0][1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.4,
+                    (0,255,0),
+                    thickness=1)
+        cv2.putText(dst,
+                    "{:.2f}".format(det.conf.data),
+                    (det.pts[:, :][3][0] - 10 , det.pts[:, :][3][1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.4,
+                    (0,255,0),
+                    thickness=1)
+    cv2.imshow("Image", dst)
+    cv2.waitKey(vis_ms)
 
+
+def get36ClsFrom64Cls(det):
+    target = Target()
+    target.cls = 9 * (det.color // 2) + det.id
+    target.pts = np.array(det.pts)
+    return target
 
 def main():
     parser = argparse.ArgumentParser(
@@ -263,7 +272,7 @@ def main():
     # --------------------------初始化变量-----------------------------
     default_img_format = [".jpg", ".png", ".jpeg"]
     # model = Model("model-opt.onnx")
-    model = Model("yolox.onnx")
+    model = Model("model_64cls.onnx")
     mean_exposure = 7500
     max_delta_exposure = 2500
     using_daheng = False
@@ -276,7 +285,7 @@ def main():
     # --------------------------初始化完成-----------------------------
     # 输入类型设置
     print("="*50)
-    print("数据集自动标注V1.1启动中")
+    print("数据集自动标注V1.2启动中")
     print("="*50)
     print("数据来源设置为  {} ...".format(type))
     if (type == "daheng"):
@@ -304,7 +313,6 @@ def main():
         video_pth = args.video
         print("Address :{}".format(video_pth))
         real_pth = getLiveURL(video_pth)
-        print("Live URL 已获取! {}".format(real_pth))
         cap = cv2.VideoCapture(real_pth)
     else:
         raise ValueError("无效的输入类型,请检查--type参数")

@@ -8,9 +8,9 @@ import math
 
 class Model:
     def __init__(self,
-                 model_pth="model-opt.onnx",
+                 model_pth="model_64.onnx",
                  topk=128,
-                 conf_thres=0.9,
+                 conf_thres=0.7,
                  nms_thres=0.1):
         self.model_path = model_pth
         self.topk = topk
@@ -94,8 +94,8 @@ class Model:
             tmp_bbox.pts[3] = np.array(np.matmul(
                 (pred[6:8] - self.resize_vector), self.resize_matrix), dtype=np.int32)
 
-            tmp_bbox.color = int(torch.argmax(pred[9:13]))
-            tmp_bbox.id = int(torch.argmax(pred[13:]))
+            tmp_bbox.color = int(torch.argmax(pred[9:17]))
+            tmp_bbox.id = int(torch.argmax(pred[17:]))
 
             for j in range(i + 1, self.topk):
                 tmp_bbox_j = BBox()
