@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from copy import copy
+from sqlite3 import Time
 import string
 from attr import attr
 import cv2
@@ -56,15 +57,31 @@ def autoLabelByStream(model, cap):
     """
     # -----------------------初始化-----------------------------
     cnt = 0
-    path = "Data/"
+    frames_cnt = 0
+    start_frame = 0
+    last_100_time = time.time()
+    path = "SJTU/"
     while(True):
         ret, img = cap.read()
+        frames_cnt+=1
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if (frames_cnt % 100 == 0 and frames_cnt != 0 and total_frames != 0):
+            current_time = time.time()
+            dtime = (current_time - last_100_time) / 100
+            eta = dtime * (total_frames - frames_cnt)
+            last_100_time = current_time
+            print("Detected frame {} / {}, ETA: {} s".format(frames_cnt, total_frames, int(eta)))
+        if frames_cnt < start_frame:
+            continue
         if img is None:
             print("[WARN] Empty frame...")
             time.sleep(1)
             continue
         cv2.imshow("Raw", img)
         cv2.waitKey(1)
+        if np.mean(img) < 0.1:
+            print("[WARN] Black screen detected,Skipping this frame")
+            continue
         # 进行推理,获取推理结果
         result = model.infer(img)
         # 若无结果继续进行下一帧识别
@@ -78,7 +95,16 @@ def autoLabelByStream(model, cap):
         for det in result:
             target = get36ClsFrom64Cls(det)
             
+            id_str = "G12345OB"
+            sz_str = "sb"
+            id = id_str[det.id]
+            size = sz_str[det.color % 2]
+            
             if (not analyzer.isInDistribution(target.pts)) and (not need_save):
+                need_save = True
+            if (id == "3" or id == "4" or id == "5") and size == "b":
+                need_save = True
+            if id == "G":
                 need_save = True
             label = str(int(target.cls))
             for pt in det.pts[:, :]:
@@ -185,7 +211,7 @@ def autoLabelByDaheng(model, exp, max_delta_exp):
         vis_result(img, result)
         for det in result:
             target = get36ClsFrom64Cls(det)
-            
+            print(det)
             if (not analyzer.isInDistribution(target.pts)) and (not need_save):
                 need_save = True
             label = str(int(target.cls))
