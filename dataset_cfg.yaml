@@ -1,3 +1,4 @@
+dataset_path: dataset/label #数据集路径
 num_pts: 4 #点的数量
 num_cls: 36 #分类数量（未使用）
 grid_num: 50 #栅格数量

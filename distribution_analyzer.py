@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import yaml
 
 class DistributionAnalyzer():
-    def __init__(self,dir="history",cfg="dataset_cfg.yaml"):
+    def __init__(self, cfg="dataset_cfg.yaml"):
         self.cls_data = []
         self.pts_data = []
         self.pts_data_normed = []
@@ -29,6 +29,7 @@ class DistributionAnalyzer():
         #Get cfg from Raw Data.
         with open(cfg, 'r', encoding='utf-8') as f:
             yaml_dict = yaml.load(f.read(), yaml.FullLoader)
+            self.dir =  yaml_dict["dataset_path"]
             self.num_pts = yaml_dict["num_pts"]
             self.num_cls = yaml_dict["num_cls"]
             self.grid_num = yaml_dict["grid_num"]
@@ -37,7 +38,7 @@ class DistributionAnalyzer():
             
         #Get raw dicts
         print("Reading prior labels...")
-        for root, dirs, files in os.walk(dir, topdown=False):
+        for root, dirs, files in os.walk(self.dir, topdown=False):
             for file_name in tqdm(files):
                 with open(os.path.join(root,file_name),'r+') as src:
                     lines = src.readlines()
