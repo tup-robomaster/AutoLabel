@@ -1,5 +1,11 @@
 import os
 import shutil
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--src_dir", type=str,default="Label", help="输入根路径.")
+parser.add_argument("--dst_dir", default="dst1",type=str, help="输出根路径.")
+arg = parser.parse_args()
 
 def move_txt_files(source_folder, destination_folder):
     # 检查源文件夹是否存在
@@ -29,8 +35,8 @@ def move_txt_files(source_folder, destination_folder):
         print(f"移动文件 '{source_file}' 到 '{destination_file}'")
 
 # 指定源文件夹和目标文件夹的路径
-source_folder = 'Label'
-destination_folder = 'dst1'
+source_folder = arg.src_dir
+destination_folder = arg.dst_dir
 
 # 调用函数进行文件移动
 move_txt_files(source_folder, destination_folder)

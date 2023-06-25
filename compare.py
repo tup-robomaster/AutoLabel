@@ -13,7 +13,6 @@ import os
 from shutil import copyfile
 
 parser = argparse.ArgumentParser()
-parser = argparse.ArgumentParser()
 parser.add_argument("--root_dir", default="label",type=str, help="输入根路径.")
 parser.add_argument("--save_path", type=str,default="output", help="输出根路径.")
 parser.add_argument("--sim_thres", type=float,default=0.99, help="相似度阈值.")

@@ -9,6 +9,10 @@ Pipeline共由以下几部分组成:
 - 图像去重脚本: `compare.py` 
 - 人工审核脚本: `observe.py`
 
+此外还包括两个工具脚本:
+- `autoremove.py` 移除文件夹内不含同名图像的标注txt文件
+- `trans_txt.py` 用于移动在文件夹间移动标注txt文件
+
 #TODO:
 - 图像模糊检测，减少模糊样本比例
 - Jupyter脚本

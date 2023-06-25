@@ -1,4 +1,9 @@
 import os
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--dir", type=str,default="", help="操作的文件夹.")
+arg = parser.parse_args()
 
 def process_txt_files(folder_path):
     # 获取文件夹中的所有文件
@@ -21,6 +26,6 @@ def process_txt_files(folder_path):
                 os.remove(file_path)
 
 # 测试示例
-folder_path = '/media/rangeronmars/1903QF2/Dataset/Data/HITSZ-SJTU-Emergency'  # 替换为实际的文件夹路径
+folder_path = arg.dir  # 替换为实际的文件夹路径
 process_txt_files(folder_path)
 
