@@ -24,7 +24,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities  
 from webdriver_manager.chrome import ChromeDriverManager
 
-from bilibili import BiliBili
+from thirdparty.bilibili import BiliBili
 
 class Target:
     def __init__(self):
@@ -182,7 +182,7 @@ class Annotator():
                 id = id_str[det.id]
                 size = sz_str[det.color % 2]
                 
-                if (not self.analyzer.isInDistribution(target.pts)) and (not need_save):
+                if not self.analyzer.isInDistribution(target.pts):
                     need_save = True
                 if (id == "3" or id == "4" or id == "5") and size == "b":
                     need_save = True

@@ -1,5 +1,5 @@
 dataset_path: dataset/label #数据集路径
 num_pts: 4 #点的数量
 num_cls: 36 #分类数量（未使用）
-grid_num: 50 #栅格数量
-OOD_thres: 0.015 #分布外阈值，小于此值对样本进行保存
+grid_num: 20  #栅格数量
+OOD_thres: 0.3 #分布外阈值，累加值如小于此值对样本进行保存（长尾的尾部长度），越小保存的图像越少

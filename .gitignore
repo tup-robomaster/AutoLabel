@@ -4,3 +4,5 @@
 *.gif
 *.bmp
 *.svg
+
+*__pycache__

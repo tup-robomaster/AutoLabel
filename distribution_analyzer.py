@@ -14,6 +14,7 @@ class DistributionAnalyzer():
         self.pts_data = []
         self.pts_data_normed = []
         self.pts_distibution_heatmap = []
+        self.pts_distibution_heatmap_cumsum = []
         self.label_file_map = []
         self.maxs = []
         self.mins = []
@@ -68,6 +69,10 @@ class DistributionAnalyzer():
     def getPtsDistribution(self):
         for _, label_pts in enumerate(self.pts_data):
             transformed_label = self.normalize(label_pts)
+            # if (transformed_label[3][0] > 5):
+            #     print(transformed_label)
+            #     print(label_pts)
+            #     print(self.label_file_map[_])
             self.pts_data_normed.append(transformed_label)
         
         self.getGrids()
@@ -80,9 +85,27 @@ class DistributionAnalyzer():
                 self.pts_distibution_heatmap[i,data[i],data[i+1]]+=1
             cnt+=1
         self.pts_distibution_heatmap/=len(self.cls_data)
+        # print(self.pts_distibution_heatmap)
+        heatmap_lists = self.pts_distibution_heatmap.reshape(-1, self.grid_num * self.grid_num)
+        heatmap_lists_sorted_idx = np.argsort(heatmap_lists, axis=1)
+        heatmap_lists_sorted_idx_inversed = np.argsort(heatmap_lists_sorted_idx, axis=1)
+        heatmap_lists_sorted = np.take_along_axis(heatmap_lists, heatmap_lists_sorted_idx, axis=1)
+        heatmap_lists_sorted_cumsum = np.cumsum(heatmap_lists_sorted,axis=1)
+        heatmap_lists_cumsum = np.take_along_axis(heatmap_lists_sorted_cumsum, heatmap_lists_sorted_idx_inversed, axis=1)
+
+        
+        # heatmap_lists_cumsum = heatmap_lists[:heatmap_sorted_idx]
+        # print(heatmap_lists_cumsum)
+        # print(self.pts_distibution_heatmap)
+        self.pts_distibution_heatmap_cumsum = heatmap_lists_cumsum.reshape(-1, self.grid_num, self.grid_num)
+        # print(self.pts_distibution_heatmap_cumsum)
+        # self.pts_distibution_heatmap_sorted_idx = np.argsort(-self.pts_distibution_heatmap.reshape(-1, self.grid_num * self.grid_num), axis=1)
+        # self.pts_distibution_heatmap_sorted_idx = np.argsort(self.pts_distibution_heatmap_sorted_idx, axis=1)
+        # self.pts_distibution_heatmap_sorted_idx = self.pts_distibution_heatmap_sorted_idx.reshape(-1, self.grid_num, self.grid_num)
         
     def normalize(self, pts):
-        affine_mat, _= cv2.estimateAffinePartial2D(pts[0:2], np.array([[0,-1],[0,1]]))
+        # print(pts)
+        affine_mat, _= cv2.estimateAffinePartial2D(pts[0:2], np.array([[0,0],[0,1]]))
         affine_homomat = np.vstack((affine_mat,np.array([0,0,1])))
         transformed_label = np.zeros([self.num_pts,2])
         for i in range(self.num_pts):
@@ -106,13 +129,15 @@ class DistributionAnalyzer():
                     self.maxs[2 * i + 1] = pts_normed[i + 2][1]
                 elif pts_normed[i+2][1] < self.mins[2 * i + 1]:
                     self.mins[2 * i + 1] = pts_normed[i + 2][1]
+        
+        #Prevent outbound
         self.mins -=1
         self.grids = (self.maxs - self.mins) / self.grid_num
     
     def getHeatMapCoord(self, pts):
         return (self.maxs - pts[2:].reshape(1,-1)[0]) / self.grids
     
-    def isInDistribution(self, pts,vis=True):
+    def isInDistribution(self, pts, vis=True):
         pts = self.normalize(pts)
         data = self.getHeatMapCoord(pts)
         data = np.floor(data).astype(np.int32)
@@ -121,7 +146,7 @@ class DistributionAnalyzer():
             pt_scalar = (0,0,0)
             is_ood_exists = False
             for i in range(self.num_pts - 2):
-                if self.pts_distibution_heatmap[i,data[i],data[i+1]] <= self.OOD_thres:
+                if self.pts_distibution_heatmap_cumsum[i,data[i],data[i+1]] <= self.OOD_thres:
                     pt_scalar = (0,0,255)
                     is_ood_exists = True
                 else:
@@ -139,6 +164,6 @@ class DistributionAnalyzer():
             return not is_ood_exists
         else:
             for i in range(self.num_pts - 2):
-                if self.pts_distibution_heatmap[i][data[i]][data[i+1]] <= self.OOD_thres:
+                if self.pts_distibution_heatmap_cumsum[i][data[i]][data[i+1]] <= self.OOD_thres:
                     return False
             return True
